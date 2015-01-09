@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+
+<style>
+
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  position: relative;
+  width: 1090px;
+  margin-right: auto;
+  margin-left: auto;
+  margin-top: 50px;
+  text-align: center;
+}
+
+.axis text {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: black;
+  shape-rendering: crispEdges;
+}
+
+.line {
+  fill: none;
+  stroke: black;
+  stroke-width: 2.5px;
+}
+
+</style>
+
+<head>
+</head>
+
+<body>
+
+  D3 Animated Graph Transitions
+
+  <div id="graphs">
+  </div>
+
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" ></script>  
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+  <script>
+  
+  var margin = {top: 20, right: 20, bottom: 30, left: 40},
+    width = 1090 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+  var x = d3.scale.linear()
+    .range([0, width]);
+
+  var xbar = d3.scale.linear()
+    .range([0, width])
+    .domain([1, 2000]);
+
+  var y = d3.scale.linear()
+    .range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+  var xbar_axis = d3.svg.axis()
+    .scale(xbar)
+    .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+  var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  var duration = 1500, 
+    delay = 1000;
+
+  d3.csv("data.csv", function(error, data) {
+    data.forEach(function(d) {
+
+      d.expression = +d.expression;
+      d.change = +d.change;
+      d.log = +d.log_change;
+      d.rank = +d.rank;
+     
+    });
+
+  x.domain(d3.extent(data, function(d) {return d.change}));
+  y.domain(d3.extent(data, function(d) {return d.expression}));
+
+  draw_scatter();
+
+  function draw_scatter() {
+
+    svg.selectAll(".dot")
+        .data(data)
+      .enter().append("rect")
+        .attr("class", "dot")
+        .attr("x", function(d) {
+          return x(d.change);
+        })
+        .attr("y", function(d) {
+          return y(d.expression);
+        })
+        .attr("rx", 4)
+        .attr("ry", 4)
+        .attr("width", 0)
+        .attr("height", 0)
+        .style("stroke-width", "1px")
+        .style("fill", "gray")
+        .style("stroke", "white");
+
+    svg.selectAll(".dot")
+      .transition()
+      .duration(duration)
+      .delay(delay)
+      .attr("width", 8)
+      .attr("height", 8)
+      .attr("opacity", ".8");
+
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("x", width)
+      .attr("y", -6)
+      .style("text-anchor", "end")
+      .text("Control");
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Expression");
+
+    setTimeout(remove_dots, duration+delay);
+
+  }
+
+  function remove_dots() {
+
+    svg.selectAll(".x")
+      .transition()
+      .duration(duration)
+      .delay(delay)
+      .remove();
+
+    svg.selectAll(".y")
+      .transition()
+      .duration(duration)
+      .delay(delay)
+      .remove();
+
+    setTimeout(draw_bar, duration + delay);
+
+  }
+
+  var barWidth = width / data.length;
+
+  function draw_bar() {
+
+    svg.selectAll("rect")
+      .transition()
+      .duration(duration)
+      .delay(delay)
+      .attr("rx", 0)
+      .attr("ry", 0)
+      .attr("x", function(d,i) {
+        if (i%2 == 0) {
+          return i*barWidth;
+        }
+      })
+      .attr("class", "bar")
+      .attr("fill", "steelblue")
+      .attr("opacity", ".8")
+      .style("stroke", "steelblue")
+      .attr("y", function(d,i) { 
+        if (i%2 == 0) {
+          return y(d.expression); 
+        }
+      })
+      .attr("height", function(d,i) { 
+        if (i%2 == 0) {
+          return height - y(d.expression); 
+        }
+      })
+      .attr("width", function(d, i) {
+        if (i%2 == 0) {
+          return .8;
+        }
+      });
+
+      svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xbar_axis)
+        .append("text")
+        .attr("class", "label")
+        .attr("x", width)
+        .attr("y", -6)
+        .style("text-anchor", "end")
+        .text("Rank");
+
+    setTimeout(sort_bar, duration + delay);
+
+  }
+
+  function sort_bar() {
+
+    svg.selectAll(".bar")
+      .transition()
+      .duration(duration)
+      .delay(delay)
+      .attr("x", function(d) {
+        return xbar(d.rank);
+      });
+
+    setTimeout(draw_line, duration+delay);
+
+  }
+
+  function draw_line() {
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Expression");
+
+    data.sort(function(a, b){ 
+      return d3.descending(a.rank, b.rank); 
+    });
+
+    var line = d3.svg.line()
+      .interpolate("linear")
+      .x(function(d) { return xbar(d.rank); })
+      .y(function(d) { return y(d.expression); });
+
+    var path = svg.append("path")
+      .attr("d", line(data))
+      .attr("class", "line")
+      .attr("stroke", "black")
+      .attr("stroke-width", "2")
+      .attr("fill", "none");
+
+    var totalLength = path.node().getTotalLength();
+
+    path
+      .attr("stroke-dasharray", totalLength + " " + totalLength)
+      .attr("stroke-dashoffset", totalLength)
+      .transition()
+        .duration(2000)
+        .ease("linear")
+        .attr("stroke-dashoffset", 0);
+
+    setTimeout(remove_bars, duration+delay);
+
+  }
+
+  function remove_bars() {
+
+    d3.selectAll(".bar")
+      .transition()
+      .duration(duration)
+      .delay(delay)
+      .attr("height", 0)
+      .remove();
+
+    setTimeout(add_scatter, duration+delay);
+
+  }
+
+  function add_scatter() {
+
+    d3.selectAll(".y")
+      .transition()
+      .duration(0)
+      .remove();
+
+    var logy = d3.scale.linear()
+      .range([height, 0]);
+
+    var log_yAxis = d3.svg.axis()
+      .scale(logy)
+      .orient("left");
+
+    d3.selection.prototype.moveToFront = function() {
+      return this.each(function(){
+        this.parentNode.appendChild(this);
+      });
+    };
+
+    logy.domain(d3.extent(data, function(d) {return d.change}));
+
+    svg.selectAll(".dot2")
+        .data(data)
+      .enter().append("circle")
+        .attr("class", "dot2")
+        .attr("r", 0)
+        .attr("cx", function(d) {
+          return xbar(d.rank);
+        })
+        .attr("cy", function(d) {
+          return logy(d.change);
+        })
+        .style("stroke-width", "1px")
+        .style("fill", "red")
+        .style("opacity", ".6")
+        .style("stroke", "white");
+
+    d3.selectAll(".line").moveToFront();
+
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xbar_axis)
+      .append("text")
+      .attr("class", "label")
+      .attr("x", width)
+      .attr("y", -6)
+      .style("text-anchor", "end")
+      .text("Rank");
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(log_yAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Log2 Expression");
+
+    svg.selectAll(".dot2")
+      .transition()
+      .duration(duration)
+      .delay(delay)
+      .attr("r", 4);
+
+  }
+ 
+  });
+
+  </script>
+
+</body>
